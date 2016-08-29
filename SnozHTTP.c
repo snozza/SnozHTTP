@@ -10,7 +10,7 @@
 #define EXIT_FAILURE 1
 
 int port;
-int daemon = FALSE;
+int deamon = FALSE;
 char *wwwroot;
 char *conf_file;
 char *log_file;
@@ -35,6 +35,6 @@ static void daemonize(void)
   pid = fork();
   if (pid < 0) {
     exit(EXIT_FAILURE);
-
+  }
 }
 
