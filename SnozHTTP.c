@@ -130,3 +130,38 @@ void sendFile(FILE *fp, int file_size)
     sendBinary(&current_char, sizeof(char));
   } while(current_char != EOF);
 }
+
+int scan(char *input, char *output, int start, int max)
+{
+  if (start >= strlen(input) )
+    return -1;
+
+  int appending_char_count = 0;
+  int i = start;
+  int count = 0;
+
+  for (; i < strlen(input); i++) {
+    if (*(input + i) != '\t' && *(input + i) != ' ' && *(input + i) != '\n' && *(input + i) !='\r') {
+      if (count < (max - 1)) {
+        *(output + appending_char_count) = *(input + i);
+        appending_char_count += 1;
+        count++;
+      }
+    }
+    else {
+      break;
+    }
+  }
+  *(output + appending_char_count) = '\0';
+
+  // find next word start
+  i += 1;
+
+  for (; i < strlen(input); i++) {
+    if (*(input + i) != '\t' && *(input + i) != ' ' && *(input + i) != '\n' && *(input + i) != '\r') {
+      break;
+    }
+  }
+
+  return i;
+}
