@@ -4,11 +4,13 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <time.h>
 
 #define TRUE 1
 #define FALSE 0
+#define BUFFER_SIZE 512
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
@@ -262,3 +264,200 @@ int getExtension(char *input, char *output, int max)
   return -1;
 }
 
+int Content_Length(FILE *fp)
+{
+  int filesize = 0;
+
+  fseek(fp, 0, SEEK_END);
+  filesize = ftell(fp);
+
+  return filesize;
+}
+
+int handleHttpGET(char *input)
+{
+  // IF NOT EXISTS
+  // RETURN -1
+  // IF EXISTS
+  // RETURN 1
+
+  char *filename = (char*)malloc(200 * sizeof(char));
+  char *path = (char*)malloc(1000 * sizeof(char));
+  char *extension = (char*)malloc(10 * sizeof(char));
+  char *mime = (char*)malloc(200 * sizeof(char));
+  char *httpVersion = (char*)malloc(20 * sizeof(char));
+
+  int contentLength = 0;
+  int mimeSupported = 0;
+  int fileNameLength = 0;
+
+  memset(path, '\0', 1000);
+  memset(filename, '\0', 200);
+  memset(extension, '\0', 10);
+  memset(mime, '\0', 200);
+  memset(httpVersion, '\0', 20);
+
+  fileNameLength = scan(input, filename, 5, 200);
+
+  if (fileNameLength > 0) {
+    if (getHttpVersion(input, httpVersion) != -1) {
+      FILE *fp;
+
+      if (getExtension(filename, extension, 10) == -1) {
+        printf("File extension does not exist");
+
+        sendString("400 Bad Request\n", connecting_socket);
+
+        free(filename);
+        free(mime);
+        free(path);
+        free(extension);
+
+        return -1;
+      }
+
+      mimeSupported = checkMime(extension, mime);
+
+      if (mimeSupported != 1) {
+        printf("Mime not supported");
+
+        sendString("400 Bad Request\n", connecting_socket);
+
+        free(filename);
+        free(mime);
+        free(path);
+        free(extension);
+
+        return -1;
+      }
+
+      // Open the request file as binary
+
+      strcpy(path, wwwroot);
+      strcat(path, filename);
+
+      fp = fopen(path, "rb");
+
+      if (fp == NULL)
+      {
+        printf("Unable to open file");
+
+        sendString("404 Not Found\n", connecting_socket);
+
+        free(filename);
+        free(mime);
+        free(extension);
+        free(path);
+
+        return -1;
+      }
+
+      // Calculate Content Length
+      contentLength = Content_Length(fp);
+      if (contentLength < 0)
+      {
+        printf("File size is zero");
+
+        free(filename);
+        free(mime);
+        free(extension);
+        free(path);
+
+        fclose(fp);
+
+        return -1;
+      }
+
+      // Send File Content
+      sendHeader("200 OK", mime, contentLength, connecting_socket);
+
+      sendFile(fp, contentLength);
+
+      free(filename);
+      free(mime);
+      free(extension);
+      free(path);
+
+      fclose(fp);
+
+      return -1;
+    }
+    else {
+      sendString("501 Not Implemented\n", connecting_socket);
+    }
+  }
+
+  return -1;
+}
+
+int getRequestType(char *input)
+{
+  // IF REQUEST NOT VALID
+  // RETURN -1
+  // IF REQUEST VALID
+  // RETURN 1 IF GET
+  // RETURN 2 IF HEAD
+  // RETURN 0 IF NOT YET IMPLEMENTED
+
+  int type = -1;
+
+  if (strlen(input) > 0) {
+    type = 1;
+  }
+
+  char *requestType = malloc(5);
+  scan(input, requestType, 0, 5);
+
+  if (type == 1 && strcmp("GET", requestType) == 0) {
+    type = 1;
+  }
+  else if (type == 1 && strcmp("HEAD", requestType) == 0) {
+    type = 2;
+  }
+  else if (strlen(input) > 4 && strcmp("POST", requestType) == 0) {
+    type = 0;
+  }
+  else {
+    type = -1;
+  }
+  return type;
+}
+
+int receive(int socket)
+{
+  int msgLen = 0;
+  char buffer[BUFFER_SIZE];
+
+  memset(buffer, '\0', BUFFER_SIZE);
+
+  if ((msgLen = recv(socket, buffer, BUFFER_SIZE, 0)) == -1) {
+    printf("Error handling incoming request");
+    return -1;
+  }
+
+  int request = getRequestType(buffer);
+
+  if (request == 1) { // GET
+    handleHttpGET(buffer);
+  }
+  else if (request == 2) { // HEAD
+    /*sendHeader();*/
+  }
+  else if (request == 0) { // POST
+    sendString("501 Not Implemented\n", connecting_socket);
+  }
+  else {
+    sendString("400 Bad Request\n", connecting_socket);
+  }
+
+  return 1;
+}
+
+/**
+ * Create a socket and assign current_socket to the descriptor
+ **/
+void createSocket()
+{
+  // AF_INET for ipv4 address family. SOCK_STREAM for full duplex bygte stream
+  current_socket = socket(AF_INET, SOCK_STREAM, 0); 
+}
