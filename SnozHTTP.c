@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -47,18 +48,85 @@ static void daemonize(void)
 
   /* change the file mode mask */
   umask(0);
-  
+
   /* create a new SID for the child process */
   sid = setsid();
   if (sid < 0) {
     exit(EXIT_FAILURE);
   }
 
-  /* change current working dir to prevent dir from being locked - 
+  /* change current working dir to prevent dir from being locked -
      hence not being able to remove it */
   if ((chdir("/")) < 0) {
     exit(EXIT_FAILURE);
   }
-
 }
 
+int sendString(char *message, int socket)
+{
+  int length = strlen(message);
+  int bytes_sent = send(socket, message, length, 0);
+
+  return bytes_sent;
+}
+
+int sendBinary(int *byte, int length)
+{
+  int bytes_sent = send(connecting_socket, byte, length, 0);
+  return bytes_sent;
+}
+
+void sendHeader(char *Status_code, char *Content_Type, int TotalSize, int socket)
+{
+  char *head = "\r\nHTTP/1.1 "; /* use \r\n for windows dos etc. */
+  char *content_head = "\r\nContent-Type: ";
+  char *length_head = "\r\nContent-Length: ";
+  char *date_head = "\r\nDate: ";
+  char *newline = "\r\n";
+  char contentLength[100]; /* TODO as pointer */
+
+  time_t rawtime;
+
+  time(&rawtime);
+
+  sprintf(contentLength, "%i", TotalSize);
+
+  char *message = malloc((
+        strlen(head) +
+        strlen(content_head) +
+        strlen(length_head) +
+        strlen(date_head) +
+        strlen(newline) +
+        strlen(Status_code) +
+        strlen(Content_Type) +
+        strlen(contentLength) +
+        28 +
+        sizeof(char)) * 2);
+
+  if (message != NULL) {
+    strcpy(message, head);
+    strcat(message, Status_code);
+    strcat(message, content_head);
+    strcat(message, Content_Type);
+    strcat(message, length_head);
+    strcat(message, contentLength);
+    strcat(message, date_head);
+    strcat(message, (char*)ctime(&rawtime));
+  }
+}
+
+void sendHTML(char *statusCode, char *contentType, char *content, int size, int socket)
+{
+  sendHeader(statusCode, contentType, size, socket);
+  sendString(content, socket);
+}
+
+void sendFile(FILE *fp, int file_size)
+{
+  int current_char = 0;
+
+  do {
+    current_char = fgetc(fp);
+    sendBinary(&current_char, sizeof(char));
+  } while(current_char != EOF);
+}
