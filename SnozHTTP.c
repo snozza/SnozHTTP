@@ -208,3 +208,57 @@ int checkMime(char *extension, char *mime_type)
 
   return 0;
 }
+
+int getHttpVersion(char *input, char *output)
+{
+  char *filename = malloc(100);
+  int start = scan(input, filename, 4, 100);
+  if (start > 0) {
+    if (scan(input, output, start, 20)) {
+      output[strlen(output) + 1] = '\0';
+      if (strcmp("HTTP/1.1", output) == 0) {
+        return 1;
+      }
+      else if (strcmp("HTTP/1.0", output) == 0) {
+        return 0;
+      }
+      else {
+        return -1;
+      }
+    }
+  }
+
+  return -1;
+}
+
+int getExtension(char *input, char *output, int max)
+{
+  int in_position = 0;
+  int appended_position = 0;
+  int i = 0;
+  int count = 0;
+
+  for (; i < strlen(input); i++) {
+    if (in_position == 1)
+    {
+      if (count < max) {
+        output[appended_position] = input[i];
+        appended_position += 1;
+        count++;
+      }
+    }
+
+    if (input[i] == '.') {
+      in_position = 1;
+    }
+  }
+
+  output[appended_position + 1] = '\0';
+
+  if (strlen(output) > 0) {
+    return 1;
+  }
+
+  return -1;
+}
+
