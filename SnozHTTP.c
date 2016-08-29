@@ -165,3 +165,46 @@ int scan(char *input, char *output, int start, int max)
 
   return i;
 }
+
+int checkMime(char *extension, char *mime_type)
+{
+  char *current_word = malloc(600);
+  char *word_holder = malloc(600);
+  char *line = malloc(200);
+  int startline = 0;
+
+  FILE *mimeFile = fopen(mime_file, "r");
+
+  free(mime_type);
+
+  mime_type = (char*)malloc(200);
+
+  memset(mime_type, '\0', 200);
+
+  while(fgets(line, 200, mimeFile) != NULL) {
+    if (line[0] != '#') {
+      startline = scan(line, current_word, 0, 600);
+      while(1) {
+        if (startline != -1) {
+          if (strcmp(word_holder, extension) == 0) {
+            memcpy(mime_type, current_word, strlen(current_word));
+            free(current_word);
+            free(word_holder);
+            free(line);
+            return 1;
+          }
+        }
+        else {
+          break;
+        }
+      }
+    }
+    memset(line, '\0', 200);
+  }
+
+  free(current_word);
+  free(word_holder);
+  free(line);
+
+  return 0;
+}
