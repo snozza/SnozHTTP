@@ -5,8 +5,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/wait.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -448,6 +450,7 @@ int receive(int socket)
     sendString("501 Not Implemented\n", connecting_socket);
   }
   else {
+    printf("here");
     sendString("400 Bad Request\n", connecting_socket);
   }
 
@@ -461,7 +464,7 @@ void createSocket()
 {
   // AF_INET for ipv4 address family. SOCK_STREAM for full duplex bygte stream
   current_socket = socket(AF_INET, SOCK_STREAM, 0);
-  
+
   if (current_socket == -1) {
     perror("Create socket");
     exit(-1);
@@ -503,7 +506,7 @@ void handle(int socket)
   // 3. Read the file content
   // 4. Send out with correct mime and http 1.1
   //
-  
+
   if (receive((int)socket) < 0) {
     perror("Receive");
     exit(-1);
@@ -552,7 +555,7 @@ void init()
   mime_file = malloc(600);
 
   // Setting default values
-  conf_file = "http.conf";
+  conf_file = "httpd.conf";
   log_file = ".log";
   strcpy(mime_file, "mime_types");
 
@@ -612,11 +615,28 @@ int main(int argc, char* argv[])
       printf("Setting logfile = %s\n", argv[parameterCount]);
       log_file = (char*)argv[parameterCount];
     }
-    
+
     else {
       printf("Usage: %s [-p port] [-d] [-l logfile]\n", argv[0]);
       printf("\t\t-p port\t\tWhich port to listen on.\n");
       printf("\t\t-d\t\tEnabled daemon mode.\n");
       printf("\t\t-l logfile\tWhich file to store the log.\n");
+      return 1;
+    }
   }
+
+  printf("Settings:\n");
+  printf("Port:\t\t\t%i\n", port);
+  printf("Server root\t\t%s\n", wwwroot);
+  printf("Configuration file:\t%s\n", conf_file);
+  printf("Logfile:\t\t%s\n", log_file);
+  printf("Deamon:\t\t\t%i\n", deamon);
+
+  if (deamon == TRUE) {
+    daemonize();
+  }
+
+  start();
+
+  return 0;
 }
