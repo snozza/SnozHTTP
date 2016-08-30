@@ -542,3 +542,81 @@ void start()
 void initConfiguration()
 {
 }
+
+void init()
+{
+  char* currentLine = malloc(100);
+  wwwroot = malloc(100);
+  conf_file = malloc(100);
+  log_file = malloc(100);
+  mime_file = malloc(600);
+
+  // Setting default values
+  conf_file = "http.conf";
+  log_file = ".log";
+  strcpy(mime_file, "mime_types");
+
+  // set deamon to FALSE
+  deamon = FALSE;
+
+  filePointer = fopen(conf_file, "r");
+
+  // Ensure that the config file is open
+  if (filePointer == NULL) {
+    fprintf(stderr, "Can't open configuration file!\n");
+    exit(1);
+  }
+
+  if (fscanf(filePointer, "%s %s", currentLine, wwwroot) != 2) {
+    fprintf(stderr, "Error in config file on line 1!\n");
+    exit(1);
+  }
+
+  // Get default port from config file
+  if (fscanf(filePointer, "%s %i", currentLine, &port) != 2) {
+    fprintf(stderr, "Error in config file on line 2!\n");
+    exit(1);
+  }
+
+  fclose(filePointer);
+  free(currentLine);
+}
+
+int main(int argc, char* argv[])
+{
+  int parameterCount;
+  char* fileExt = malloc(10);
+  char* mime_type = malloc(800);
+
+  init();
+
+  for (parameterCount = 1; parameterCount < argc; parameterCount++)
+  {
+    // If flag -p is used, set port
+    if (strcmp(argv[parameterCount], "-p") == 0) {
+      // Indicate that we want to jump over the next parameter
+      parameterCount++;
+      printf("Setting port to %i\n", atoi(argv[parameterCount]));
+      port = atoi(argv[parameterCount]);
+    }
+
+    // if flag -d is used, set deamon to TRUE;
+    else if (strcmp(argv[parameterCount], "-d") == 0) {
+      printf("setting deamon = TRUE");
+      deamon = TRUE;
+    }
+
+    else if (strcmp(argv[parameterCount], "-l") == 0) {
+      // Indicate that we want to jump over next param
+      parameterCount++;
+      printf("Setting logfile = %s\n", argv[parameterCount]);
+      log_file = (char*)argv[parameterCount];
+    }
+    
+    else {
+      printf("Usage: %s [-p port] [-d] [-l logfile]\n", argv[0]);
+      printf("\t\t-p port\t\tWhich port to listen on.\n");
+      printf("\t\t-d\t\tEnabled daemon mode.\n");
+      printf("\t\t-l logfile\tWhich file to store the log.\n");
+  }
+}
