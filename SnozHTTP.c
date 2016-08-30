@@ -11,6 +11,7 @@
 #define TRUE 1
 #define FALSE 0
 #define BUFFER_SIZE 512
+#define MAX_CONNECTIONS 3
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
@@ -459,5 +460,85 @@ int receive(int socket)
 void createSocket()
 {
   // AF_INET for ipv4 address family. SOCK_STREAM for full duplex bygte stream
-  current_socket = socket(AF_INET, SOCK_STREAM, 0); 
+  current_socket = socket(AF_INET, SOCK_STREAM, 0);
+  
+  if (current_socket == -1) {
+    perror("Create socket");
+    exit(-1);
+  }
+}
+
+/**
+ * Bind to the current_socket descriptor and listen to the port in PORT
+ */
+void bindSocket()
+{
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = INADDR_ANY;
+  address.sin_port = htons(port); // convert short unsigned int hostsort from host byte order to network byte
+
+  if (bind(current_socket, (struct sockaddr *)&address, sizeof(address)) < 0) {
+    perror("Listen on port");
+    exit(-1);
+  }
+}
+
+/**
+ * Start listening for connections and accept no mor than MAX_CONNECTIONS on
+ * the queue
+ */
+void startListener()
+{
+  if (listen(current_socket, MAX_CONNECTIONS) < 0) {
+    perror("Listen on port");
+    exit(-1);
+  }
+}
+
+void handle(int socket)
+{
+  // Workflow:
+  // 1. Receive (recv()) the GET / HEAD
+  // 2. Process the request and see if the file exists
+  // 3. Read the file content
+  // 4. Send out with correct mime and http 1.1
+  //
+  
+  if (receive((int)socket) < 0) {
+    perror("Receive");
+    exit(-1);
+  }
+}
+
+void acceptConnection()
+{
+  addr_size = sizeof(connector);
+
+  connecting_socket = accept(current_socket, (struct sockaddr *)&connector, &addr_size);
+
+  if (connecting_socket < 0) {
+    perror("Accepting sockets");
+    exit(-1);
+  }
+
+  handle(connecting_socket);
+
+  close(connecting_socket);
+}
+
+void start()
+{
+  createSocket();
+
+  bindSocket();
+
+  startListener();
+
+  while (1) {
+    acceptConnection();
+  }
+}
+
+void initConfiguration()
+{
 }
